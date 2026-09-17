@@ -16,5 +16,6 @@ struct ProUsageTrackerApp: App {
                 }
         }
         .defaultSize(width: 1080, height: 650)
+        .windowStyle(.hiddenTitleBar)
     }
 }

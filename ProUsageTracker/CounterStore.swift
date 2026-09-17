@@ -100,8 +100,10 @@ final class CounterStore: ObservableObject {
 
     func setWeekly6(_ value: Int) {
         refreshDayIfNeeded()
+        let normalizedValue = max(0, value)
+        guard normalizedValue != weekly6 else { return }
         invalidateUndo()
-        weekly6 = max(0, value)
+        weekly6 = normalizedValue
         touchAndPersist()
     }
 
