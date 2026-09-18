@@ -2,11 +2,19 @@ import AppKit
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var store: CounterStore
 
+    @State private var isWeeklyPopoverPresented = false
     @State private var weeklyDraft = ""
-    @State private var isWeeklyEditing = false
-    @FocusState private var weeklyFieldIsFocused: Bool
+    @State private var weeklyOriginalValue = 0
+    @State private var weeklyPopoverDismissal: WeeklyPopoverDismissal = .none
+
+    private enum WeeklyPopoverDismissal {
+        case none
+        case commit
+        case cancel
+    }
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -16,166 +24,201 @@ struct ContentView: View {
         return formatter
     }()
 
+    private var canvasColor: Color {
+        colorScheme == .dark
+            ? Color(nsColor: .windowBackgroundColor)
+            : Color(red: 0.969, green: 0.976, blue: 0.988)
+    }
+
+    private var surfaceColor: Color {
+        colorScheme == .dark
+            ? Color(nsColor: .controlBackgroundColor)
+            : Color(nsColor: .textBackgroundColor)
+    }
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            Color(nsColor: .textBackgroundColor)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    finishWeeklyEditing()
-                }
+        VStack(spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("今日")
+                    .font(.system(size: 26, weight: .semibold))
 
-            VStack(spacing: 20) {
-                HStack(alignment: .firstTextBaseline) {
+                Spacer()
+
+                Text(Self.dateFormatter.string(from: store.currentDate))
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 18) {
+                CounterCard(
+                    title: "GPT-5.6 Pro",
+                    dailyLabel: "今日",
+                    dailyValue: store.daily56,
+                    onIncrement: {
+                        finishWeeklyPopoverForAction()
+                        store.incrementDaily56()
+                    },
+                    onDecrement: {
+                        finishWeeklyPopoverForAction()
+                        store.decrementDaily56()
+                    },
+                    onClear: {
+                        finishWeeklyPopoverForAction()
+                        store.clearDaily56()
+                    }
+                ) {
                     Text("今日")
-                        .font(.system(size: 24, weight: .semibold))
-
-                    Spacer()
-
-                    Text(Self.dateFormatter.string(from: store.currentDate))
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 20) {
-                    CounterCard(
-                        title: "GPT-5.6 Pro",
-                        dailyLabel: "今日",
-                        dailyValue: store.daily56,
-                        onIncrement: {
-                            finishWeeklyEditing()
-                            store.incrementDaily56()
-                        },
-                        onDecrement: {
-                            finishWeeklyEditing()
-                            store.decrementDaily56()
-                        },
-                        onClear: {
-                            finishWeeklyEditing()
-                            store.clearDaily56()
-                        }
-                    ) {
-                        Text("今日")
-                            .font(.system(size: 17, weight: .regular))
-                            .foregroundStyle(.secondary)
+                CounterCard(
+                    title: "GPT-6 Pro",
+                    dailyLabel: "今日",
+                    dailyValue: store.daily6,
+                    onIncrement: {
+                        finishWeeklyPopoverForAction()
+                        store.incrementDaily6()
+                    },
+                    onDecrement: {
+                        finishWeeklyPopoverForAction()
+                        store.decrementDaily6()
+                    },
+                    onClear: {
+                        finishWeeklyPopoverForAction()
+                        store.clearDaily6()
                     }
-
-                    CounterCard(
-                        title: "GPT-6 Pro",
-                        dailyLabel: "今日",
-                        dailyValue: store.daily6,
-                        onIncrement: {
-                            finishWeeklyEditing()
-                            store.incrementDaily6()
-                        },
-                        onDecrement: {
-                            finishWeeklyEditing()
-                            store.decrementDaily6()
-                        },
-                        onClear: {
-                            finishWeeklyEditing()
-                            store.clearDaily6()
-                        }
-                    ) {
-                        WeeklyEditor(
-                            weeklyValue: store.weekly6,
-                            weeklyDraft: $weeklyDraft,
-                            isEditing: $isWeeklyEditing,
-                            isFocused: $weeklyFieldIsFocused,
-                            onBegin: beginWeeklyEditing,
-                            onFinish: finishWeeklyEditing,
-                            onCancel: cancelWeeklyEditing
-                        )
-                    }
-                }
-
-                HStack {
-                    Text("今日合计")
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("\(store.dailyTotal)")
-                            .font(.system(size: 28, weight: .semibold))
-                            .monospacedDigit()
-                        Text("次")
-                            .font(.system(size: 18, weight: .regular))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal, 24)
-                .frame(maxWidth: .infinity, minHeight: 72)
-                .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 16))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-                }
-
-                HStack(spacing: 16) {
-                    Button("今日清零") {
-                        finishWeeklyEditing()
-                        store.clearToday()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(SecondaryActionButtonStyle())
-
-                    Button("本周清零") {
-                        finishWeeklyEditing()
-                        store.clearWeekly6()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(SecondaryActionButtonStyle())
-
-                    Button("撤销清零") {
-                        finishWeeklyEditing()
-                        store.undoClear()
-                    }
-                    .disabled(!store.canUndoClear)
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(SecondaryActionButtonStyle())
+                ) {
+                    WeeklyCapsule(
+                        weeklyValue: store.weekly6,
+                        isPresented: $isWeeklyPopoverPresented,
+                        onBegin: beginWeeklyPopover,
+                        weeklyDraft: $weeklyDraft,
+                        onCommit: commitWeeklyPopover,
+                        onCancel: cancelWeeklyPopover
+                    )
                 }
             }
-            .frame(maxWidth: 1120)
-            .padding(.horizontal, 32)
-            .padding(.top, 30)
-            .padding(.bottom, 28)
-            .frame(maxWidth: .infinity, alignment: .top)
+
+            HStack {
+                Text("今日合计")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text("\(store.dailyTotal)")
+                        .font(.system(size: 28, weight: .semibold))
+                        .monospacedDigit()
+                    Text("次")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity, minHeight: 66)
+            .background(surfaceColor, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.035), radius: 10, y: 3)
+
+            HStack(spacing: 16) {
+                Button("今日清零") {
+                    finishWeeklyPopoverForAction()
+                    store.clearToday()
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+
+                Button("本周清零") {
+                    finishWeeklyPopoverForAction()
+                    store.clearWeekly6()
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+
+                Button("撤销清零") {
+                    finishWeeklyPopoverForAction()
+                    store.undoClear()
+                }
+                .disabled(!store.canUndoClear)
+                .buttonStyle(SecondaryActionButtonStyle())
+            }
+        }
+        .frame(maxWidth: 1000)
+        .padding(.horizontal, 30)
+        .padding(.top, 22)
+        .padding(.bottom, 24)
+        .frame(maxWidth: .infinity, alignment: .top)
+        .background(canvasColor.ignoresSafeArea())
+        .onChange(of: isWeeklyPopoverPresented) { isPresented in
+            guard !isPresented else { return }
+            handleWeeklyPopoverDismissal()
         }
     }
 
-    private func beginWeeklyEditing() {
+    private func beginWeeklyPopover() {
+        weeklyOriginalValue = store.weekly6
         weeklyDraft = String(store.weekly6)
-        isWeeklyEditing = true
-        DispatchQueue.main.async {
-            weeklyFieldIsFocused = true
-        }
+        weeklyPopoverDismissal = .none
+        isWeeklyPopoverPresented = true
     }
 
-    private func finishWeeklyEditing() {
-        guard isWeeklyEditing else { return }
+    private func commitWeeklyPopover() {
+        guard isWeeklyPopoverPresented else { return }
 
+        weeklyPopoverDismissal = .commit
+        commitWeeklyDraftIfNeeded()
+        isWeeklyPopoverPresented = false
+    }
+
+    private func cancelWeeklyPopover() {
+        guard isWeeklyPopoverPresented else { return }
+
+        weeklyPopoverDismissal = .cancel
+        weeklyDraft = String(weeklyOriginalValue)
+        isWeeklyPopoverPresented = false
+    }
+
+    private func finishWeeklyPopoverForAction() {
+        guard isWeeklyPopoverPresented else { return }
+        commitWeeklyPopover()
+    }
+
+    private func commitWeeklyDraftIfNeeded() {
         let trimmedDraft = weeklyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let value = Int(trimmedDraft) {
-            store.setWeekly6(max(0, value))
+        guard let value = Int(trimmedDraft) else {
+            weeklyDraft = String(weeklyOriginalValue)
+            return
         }
 
-        isWeeklyEditing = false
-        weeklyFieldIsFocused = false
+        let normalizedValue = max(0, value)
+        if normalizedValue != weeklyOriginalValue {
+            store.setWeekly6(normalizedValue)
+        }
         weeklyDraft = String(store.weekly6)
     }
 
-    private func cancelWeeklyEditing() {
-        guard isWeeklyEditing else { return }
+    // The presentation binding is the single path for a native outside dismissal.
+    private func handleWeeklyPopoverDismissal() {
+        switch weeklyPopoverDismissal {
+        case .none:
+            commitWeeklyDraftIfNeeded()
+        case .commit:
+            break
+        case .cancel:
+            weeklyDraft = String(weeklyOriginalValue)
+        }
 
-        isWeeklyEditing = false
-        weeklyFieldIsFocused = false
+        weeklyPopoverDismissal = .none
         weeklyDraft = String(store.weekly6)
     }
 }
 
 private struct CounterCard<Accessory: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let title: String
     let dailyLabel: String
     let dailyValue: Int
@@ -183,6 +226,12 @@ private struct CounterCard<Accessory: View>: View {
     let onDecrement: () -> Void
     let onClear: () -> Void
     let accessory: Accessory
+
+    private var surfaceColor: Color {
+        colorScheme == .dark
+            ? Color(nsColor: .controlBackgroundColor)
+            : Color(nsColor: .textBackgroundColor)
+    }
 
     init(
         title: String,
@@ -203,19 +252,20 @@ private struct CounterCard<Accessory: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(title)
                         .font(.system(size: 23, weight: .semibold))
+
                     if title == "GPT-6 Pro" {
                         Text(dailyLabel)
-                            .font(.system(size: 17, weight: .regular))
+                            .font(.system(size: 16, weight: .regular))
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 12)
 
                 accessory
             }
@@ -223,7 +273,7 @@ private struct CounterCard<Accessory: View>: View {
             Spacer(minLength: 0)
 
             Text("\(dailyValue)")
-                .font(.system(size: 74, weight: .semibold, design: .rounded))
+                .font(.system(size: 78, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .frame(maxWidth: .infinity)
 
@@ -235,88 +285,131 @@ private struct CounterCard<Accessory: View>: View {
             HStack(spacing: 16) {
                 Button("-1", action: onDecrement)
                     .disabled(dailyValue == 0)
-                    .frame(maxWidth: .infinity)
                     .buttonStyle(SecondaryActionButtonStyle())
 
                 Button("清零", action: onClear)
-                    .frame(maxWidth: .infinity)
                     .buttonStyle(SecondaryActionButtonStyle())
             }
         }
-        .padding(18)
+        .padding(23)
         .frame(maxWidth: .infinity)
-        .frame(height: 360)
-        .background(Color(nsColor: .textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .frame(height: 330)
+        .background(surfaceColor, in: RoundedRectangle(cornerRadius: 22))
         .overlay {
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.035), radius: 10, y: 3)
+    }
+}
+
+private struct WeeklyCapsule: View {
+    let weeklyValue: Int
+    @Binding var isPresented: Bool
+    let onBegin: () -> Void
+    @Binding var weeklyDraft: String
+    let onCommit: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        Button(action: onBegin) {
+            HStack(spacing: 6) {
+                Text("本周")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 6)
+
+                Text("\(weeklyValue)")
+                    .font(.system(size: 20, weight: .semibold))
+                    .monospacedDigit()
+
+                Text("次")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+        }
+        .buttonStyle(WeeklyCapsuleButtonStyle())
+        .frame(width: 136, height: 50)
+        .popover(isPresented: $isPresented, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
+            WeeklyPopoverEditor(
+                weeklyDraft: $weeklyDraft,
+                onCommit: onCommit,
+                onCancel: onCancel
+            )
         }
     }
 }
 
-private struct WeeklyEditor: View {
-    let weeklyValue: Int
+private struct WeeklyPopoverEditor: View {
     @Binding var weeklyDraft: String
-    @Binding var isEditing: Bool
-    let isFocused: FocusState<Bool>.Binding
-    let onBegin: () -> Void
-    let onFinish: () -> Void
+    let onCommit: () -> Void
     let onCancel: () -> Void
 
-    var body: some View {
-        Group {
-            if isEditing {
-                HStack(spacing: 5) {
-                    TextField("", text: $weeklyDraft)
-                        .font(.system(size: 24, weight: .semibold))
-                        .monospacedDigit()
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.plain)
-                        .focused(isFocused)
-                        .onSubmit {
-                            onFinish()
-                        }
-                        .onExitCommand(perform: onCancel)
-                    Text("次")
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 12)
-            } else {
-                Button(action: onBegin) {
-                    VStack(alignment: .trailing, spacing: 8) {
-                        Text("本周")
-                            .font(.system(size: 17, weight: .regular))
-                            .foregroundStyle(.secondary)
+    @FocusState private var fieldIsFocused: Bool
 
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Text("\(weeklyValue)")
-                                .font(.system(size: 24, weight: .semibold))
-                                .monospacedDigit()
-                            Text("次")
-                                .font(.system(size: 17, weight: .regular))
-                                .foregroundStyle(.secondary)
-                        }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("本周")
+                .font(.system(size: 16, weight: .semibold))
+
+            HStack(spacing: 6) {
+                TextField("", text: $weeklyDraft)
+                    .font(.system(size: 20, weight: .semibold))
+                    .monospacedDigit()
+                    .multilineTextAlignment(.trailing)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($fieldIsFocused)
+                    .onSubmit {
+                        submit()
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                    .contentShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .buttonStyle(.plain)
+                    .onExitCommand {
+                        cancel()
+                    }
+
+                Text("次")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 128, height: 90)
-        .background(Color(nsColor: .textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        }
-        .onChange(of: isFocused.wrappedValue) { focused in
-            if !focused && isEditing {
-                onFinish()
+        .padding(16)
+        .frame(width: 210)
+        .onAppear {
+            DispatchQueue.main.async {
+                fieldIsFocused = true
             }
         }
+    }
+
+    private func submit() {
+        fieldIsFocused = false
+        onCommit()
+    }
+
+    private func cancel() {
+        fieldIsFocused = false
+        onCancel()
+    }
+}
+
+private struct WeeklyCapsuleButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .contentShape(Capsule())
+            .background(
+                Color.accentColor.opacity(configuration.isPressed ? 0.18 : 0.10),
+                in: Capsule()
+            )
+            .overlay {
+                Capsule()
+                    .stroke(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.14), lineWidth: 1)
+            }
+            .clipShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
 
@@ -326,16 +419,16 @@ private struct PrimaryCounterButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 22, weight: .semibold))
-            .frame(maxWidth: .infinity, minHeight: 64)
+            .frame(maxWidth: .infinity, minHeight: 60)
             .contentShape(RoundedRectangle(cornerRadius: 14))
             .foregroundStyle(.primary)
             .background(
-                Color.accentColor.opacity(configuration.isPressed ? 0.22 : 0.12),
+                Color.accentColor.opacity(configuration.isPressed ? 0.24 : 0.16),
                 in: RoundedRectangle(cornerRadius: 14)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.accentColor.opacity(0.08), lineWidth: 1)
+                    .stroke(Color.accentColor.opacity(0.10), lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .opacity(isEnabled ? 1 : 0.45)
@@ -344,21 +437,25 @@ private struct PrimaryCounterButtonStyle: ButtonStyle {
 }
 
 private struct SecondaryActionButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
+
+    private var surfaceColor: Color {
+        colorScheme == .dark
+            ? Color(nsColor: .controlBackgroundColor)
+            : Color(nsColor: .textBackgroundColor)
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 18, weight: .medium))
-            .frame(maxWidth: .infinity, minHeight: 54)
+            .frame(maxWidth: .infinity, minHeight: 50)
             .contentShape(RoundedRectangle(cornerRadius: 12))
             .foregroundStyle(.primary)
-            .background(
-                Color(nsColor: .textBackgroundColor),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
+            .background(surfaceColor, in: RoundedRectangle(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.primary.opacity(0.14), lineWidth: 1)
+                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .opacity(isEnabled ? (configuration.isPressed ? 0.72 : 1) : 0.42)
