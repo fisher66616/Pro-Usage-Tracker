@@ -5,16 +5,10 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var store: CounterStore
 
-    @State private var isWeeklyPopoverPresented = false
+    @State private var isWeeklyEditing = false
     @State private var weeklyDraft = ""
     @State private var weeklyOriginalValue = 0
-    @State private var weeklyPopoverDismissal: WeeklyPopoverDismissal = .none
-
-    private enum WeeklyPopoverDismissal {
-        case none
-        case commit
-        case cancel
-    }
+    @FocusState private var weeklyFieldFocused: Bool
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -55,15 +49,15 @@ struct ContentView: View {
                     dailyLabel: "今日",
                     dailyValue: store.daily56,
                     onIncrement: {
-                        finishWeeklyPopoverForAction()
+                        finishWeeklyEditing()
                         store.incrementDaily56()
                     },
                     onDecrement: {
-                        finishWeeklyPopoverForAction()
+                        finishWeeklyEditing()
                         store.decrementDaily56()
                     },
                     onClear: {
-                        finishWeeklyPopoverForAction()
+                        finishWeeklyEditing()
                         store.clearDaily56()
                     }
                 ) {
@@ -77,25 +71,26 @@ struct ContentView: View {
                     dailyLabel: "今日",
                     dailyValue: store.daily6,
                     onIncrement: {
-                        finishWeeklyPopoverForAction()
+                        finishWeeklyEditing()
                         store.incrementDaily6()
                     },
                     onDecrement: {
-                        finishWeeklyPopoverForAction()
+                        finishWeeklyEditing()
                         store.decrementDaily6()
                     },
                     onClear: {
-                        finishWeeklyPopoverForAction()
+                        finishWeeklyEditing()
                         store.clearDaily6()
                     }
                 ) {
-                    WeeklyCapsule(
+                    WeeklyCounterEditor(
                         weeklyValue: store.weekly6,
-                        isPresented: $isWeeklyPopoverPresented,
-                        onBegin: beginWeeklyPopover,
+                        isEditing: $isWeeklyEditing,
                         weeklyDraft: $weeklyDraft,
-                        onCommit: commitWeeklyPopover,
-                        onCancel: cancelWeeklyPopover
+                        isFocused: $weeklyFieldFocused,
+                        onBegin: beginWeeklyEditing,
+                        onCommit: finishWeeklyEditing,
+                        onCancel: cancelWeeklyEditing
                     )
                 }
             }
@@ -127,19 +122,19 @@ struct ContentView: View {
 
             HStack(spacing: 16) {
                 Button("今日清零") {
-                    finishWeeklyPopoverForAction()
+                    finishWeeklyEditing()
                     store.clearToday()
                 }
                 .buttonStyle(SecondaryActionButtonStyle())
 
                 Button("本周清零") {
-                    finishWeeklyPopoverForAction()
+                    finishWeeklyEditing()
                     store.clearWeekly6()
                 }
                 .buttonStyle(SecondaryActionButtonStyle())
 
                 Button("撤销清零") {
-                    finishWeeklyPopoverForAction()
+                    cancelWeeklyEditing()
                     store.undoClear()
                 }
                 .disabled(!store.canUndoClear)
@@ -151,68 +146,50 @@ struct ContentView: View {
         .padding(.top, 22)
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity, alignment: .top)
-        .background(canvasColor.ignoresSafeArea())
-        .onChange(of: isWeeklyPopoverPresented) { isPresented in
-            guard !isPresented else { return }
-            handleWeeklyPopoverDismissal()
+        .background {
+            canvasColor
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    finishWeeklyEditing()
+                }
         }
     }
 
-    private func beginWeeklyPopover() {
+    private func beginWeeklyEditing() {
         weeklyOriginalValue = store.weekly6
         weeklyDraft = String(store.weekly6)
-        weeklyPopoverDismissal = .none
-        isWeeklyPopoverPresented = true
+        isWeeklyEditing = true
+
+        DispatchQueue.main.async {
+            if isWeeklyEditing {
+                weeklyFieldFocused = true
+            }
+        }
     }
 
-    private func commitWeeklyPopover() {
-        guard isWeeklyPopoverPresented else { return }
+    private func finishWeeklyEditing() {
+        guard isWeeklyEditing else { return }
 
-        weeklyPopoverDismissal = .commit
-        commitWeeklyDraftIfNeeded()
-        isWeeklyPopoverPresented = false
-    }
-
-    private func cancelWeeklyPopover() {
-        guard isWeeklyPopoverPresented else { return }
-
-        weeklyPopoverDismissal = .cancel
-        weeklyDraft = String(weeklyOriginalValue)
-        isWeeklyPopoverPresented = false
-    }
-
-    private func finishWeeklyPopoverForAction() {
-        guard isWeeklyPopoverPresented else { return }
-        commitWeeklyPopover()
-    }
-
-    private func commitWeeklyDraftIfNeeded() {
         let trimmedDraft = weeklyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let value = Int(trimmedDraft) else {
-            weeklyDraft = String(weeklyOriginalValue)
-            return
+        if let value = Int(trimmedDraft) {
+            let normalizedValue = max(0, value)
+            if normalizedValue != weeklyOriginalValue {
+                store.setWeekly6(normalizedValue)
+            }
         }
 
-        let normalizedValue = max(0, value)
-        if normalizedValue != weeklyOriginalValue {
-            store.setWeekly6(normalizedValue)
-        }
+        weeklyFieldFocused = false
+        isWeeklyEditing = false
         weeklyDraft = String(store.weekly6)
     }
 
-    // The presentation binding is the single path for a native outside dismissal.
-    private func handleWeeklyPopoverDismissal() {
-        switch weeklyPopoverDismissal {
-        case .none:
-            commitWeeklyDraftIfNeeded()
-        case .commit:
-            break
-        case .cancel:
-            weeklyDraft = String(weeklyOriginalValue)
-        }
+    private func cancelWeeklyEditing() {
+        guard isWeeklyEditing else { return }
 
-        weeklyPopoverDismissal = .none
-        weeklyDraft = String(store.weekly6)
+        weeklyDraft = String(weeklyOriginalValue)
+        weeklyFieldFocused = false
+        isWeeklyEditing = false
     }
 }
 
@@ -303,113 +280,121 @@ private struct CounterCard<Accessory: View>: View {
     }
 }
 
-private struct WeeklyCapsule: View {
+private struct WeeklyCounterEditor: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let weeklyValue: Int
-    @Binding var isPresented: Bool
-    let onBegin: () -> Void
+    @Binding var isEditing: Bool
     @Binding var weeklyDraft: String
+    let isFocused: FocusState<Bool>.Binding
+    let onBegin: () -> Void
     let onCommit: () -> Void
     let onCancel: () -> Void
 
+    private var surfaceColor: Color {
+        colorScheme == .dark
+            ? Color(nsColor: .controlBackgroundColor)
+            : Color(nsColor: .textBackgroundColor)
+    }
+
     var body: some View {
+        Group {
+            if isEditing {
+                editingContent
+            } else {
+                normalButton
+            }
+        }
+        .frame(width: 136, height: 72)
+    }
+
+    private var normalButton: some View {
         Button(action: onBegin) {
-            HStack(spacing: 6) {
+            VStack(alignment: .trailing, spacing: 4) {
                 Text("本周")
                     .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(.secondary)
 
-                Spacer(minLength: 6)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(weeklyValue)")
+                        .font(.system(size: 21, weight: .semibold))
+                        .monospacedDigit()
 
-                Text("\(weeklyValue)")
-                    .font(.system(size: 20, weight: .semibold))
-                    .monospacedDigit()
-
-                Text("次")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(.secondary)
+                    Text("次")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .background(surfaceColor, in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+            }
         }
-        .buttonStyle(WeeklyCapsuleButtonStyle())
-        .frame(width: 136, height: 50)
-        .popover(isPresented: $isPresented, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
-            WeeklyPopoverEditor(
-                weeklyDraft: $weeklyDraft,
-                onCommit: onCommit,
-                onCancel: onCancel
-            )
-        }
+        .buttonStyle(.plain)
     }
-}
 
-private struct WeeklyPopoverEditor: View {
-    @Binding var weeklyDraft: String
-    let onCommit: () -> Void
-    let onCancel: () -> Void
-
-    @FocusState private var fieldIsFocused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var editingContent: some View {
+        VStack(alignment: .trailing, spacing: 4) {
             Text("本周")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.secondary)
 
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 TextField("", text: $weeklyDraft)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .monospacedDigit()
                     .multilineTextAlignment(.trailing)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($fieldIsFocused)
+                    .textFieldStyle(.plain)
+                    .frame(width: 50, height: 26)
+                    .background(surfaceColor.opacity(colorScheme == .dark ? 0.55 : 0.72), in: RoundedRectangle(cornerRadius: 6))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                    }
+                    .focused(isFocused)
                     .onSubmit {
-                        submit()
+                        onCommit()
                     }
                     .onExitCommand {
-                        cancel()
+                        onCancel()
                     }
+                    .accessibilityLabel("本周次数")
 
-                Text("次")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(.secondary)
+                Button(action: onCommit) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.primary)
+                .accessibilityLabel("保存本周次数")
+
+                Button(action: onCancel) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("取消编辑本周次数")
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(16)
-        .frame(width: 210)
-        .onAppear {
-            DispatchQueue.main.async {
-                fieldIsFocused = true
-            }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(width: 136, height: 72, alignment: .trailing)
+        .background(surfaceColor, in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
         }
-    }
-
-    private func submit() {
-        fieldIsFocused = false
-        onCommit()
-    }
-
-    private func cancel() {
-        fieldIsFocused = false
-        onCancel()
-    }
-}
-
-private struct WeeklyCapsuleButtonStyle: ButtonStyle {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .contentShape(Capsule())
-            .background(
-                Color.accentColor.opacity(configuration.isPressed ? 0.18 : 0.10),
-                in: Capsule()
-            )
-            .overlay {
-                Capsule()
-                    .stroke(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.14), lineWidth: 1)
-            }
-            .clipShape(Capsule())
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
 
