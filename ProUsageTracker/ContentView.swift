@@ -31,129 +31,151 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 18) {
-            HStack(alignment: .firstTextBaseline) {
+        GeometryReader { proxy in
+            let metrics = LayoutMetrics(size: proxy.size)
+
+            ZStack {
+                canvasColor
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+
+                VStack(spacing: metrics.outerSpacing) {
+                    headerView(metrics: metrics)
+                    counterCardsView(metrics: metrics)
+                    summaryView(metrics: metrics)
+                    actionButtonsView(metrics: metrics)
+                }
+                .padding(.horizontal, metrics.horizontalPadding)
+                .padding(.top, metrics.topPadding)
+                .padding(.bottom, metrics.bottomPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+    }
+
+    private func headerView(metrics: LayoutMetrics) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("今日")
+                .font(.system(size: 26, weight: .semibold))
+
+            Spacer()
+
+            Text(Self.dateFormatter.string(from: store.currentDate))
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(height: metrics.headerHeight)
+    }
+
+    private func counterCardsView(metrics: LayoutMetrics) -> some View {
+        HStack(spacing: 18) {
+            CounterCard(
+                title: "GPT-5.6 Pro",
+                dailyLabel: "今日",
+                dailyValue: store.daily56,
+                metrics: metrics,
+                onIncrement: {
+                    finishWeeklyEditing()
+                    store.incrementDaily56()
+                },
+                onDecrement: {
+                    finishWeeklyEditing()
+                    store.decrementDaily56()
+                },
+                onClear: {
+                    finishWeeklyEditing()
+                    store.clearDaily56()
+                }
+            ) {
                 Text("今日")
-                    .font(.system(size: 26, weight: .semibold))
-
-                Spacer()
-
-                Text(Self.dateFormatter.string(from: store.currentDate))
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 18) {
-                CounterCard(
-                    title: "GPT-5.6 Pro",
-                    dailyLabel: "今日",
-                    dailyValue: store.daily56,
-                    onIncrement: {
-                        finishWeeklyEditing()
-                        store.incrementDaily56()
-                    },
-                    onDecrement: {
-                        finishWeeklyEditing()
-                        store.decrementDaily56()
-                    },
-                    onClear: {
-                        finishWeeklyEditing()
-                        store.clearDaily56()
-                    }
-                ) {
-                    Text("今日")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(.secondary)
+            CounterCard(
+                title: "GPT-6 Pro",
+                dailyLabel: "今日",
+                dailyValue: store.daily6,
+                metrics: metrics,
+                onIncrement: {
+                    finishWeeklyEditing()
+                    store.incrementDaily6()
+                },
+                onDecrement: {
+                    finishWeeklyEditing()
+                    store.decrementDaily6()
+                },
+                onClear: {
+                    finishWeeklyEditing()
+                    store.clearDaily6()
                 }
-
-                CounterCard(
-                    title: "GPT-6 Pro",
-                    dailyLabel: "今日",
-                    dailyValue: store.daily6,
-                    onIncrement: {
-                        finishWeeklyEditing()
-                        store.incrementDaily6()
-                    },
-                    onDecrement: {
-                        finishWeeklyEditing()
-                        store.decrementDaily6()
-                    },
-                    onClear: {
-                        finishWeeklyEditing()
-                        store.clearDaily6()
-                    }
-                ) {
-                    WeeklyCounterEditor(
-                        weeklyValue: store.weekly6,
-                        isEditing: $isWeeklyEditing,
-                        weeklyDraft: $weeklyDraft,
-                        isFocused: $weeklyFieldFocused,
-                        onBegin: beginWeeklyEditing,
-                        onCommit: finishWeeklyEditing,
-                        onCancel: cancelWeeklyEditing
-                    )
-                }
+            ) {
+                WeeklyCounterEditor(
+                    weeklyValue: store.weekly6,
+                    isEditing: $isWeeklyEditing,
+                    weeklyDraft: $weeklyDraft,
+                    isFocused: $weeklyFieldFocused,
+                    onBegin: beginWeeklyEditing,
+                    onCommit: finishWeeklyEditing,
+                    onCancel: cancelWeeklyEditing
+                )
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .layoutPriority(1)
+    }
 
-            HStack {
-                Text("今日合计")
+    private func summaryView(metrics: LayoutMetrics) -> some View {
+        HStack {
+            Text("今日合计")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text("\(store.dailyTotal)")
+                    .font(.system(size: 28, weight: .semibold))
+                    .monospacedDigit()
+                Text("次")
                     .font(.system(size: 18, weight: .regular))
                     .foregroundStyle(.secondary)
-
-                Spacer()
-
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("\(store.dailyTotal)")
-                        .font(.system(size: 28, weight: .semibold))
-                        .monospacedDigit()
-                    Text("次")
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 24)
-            .frame(maxWidth: .infinity, minHeight: 66)
-            .background(surfaceColor, in: RoundedRectangle(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            }
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.035), radius: 10, y: 3)
-
-            HStack(spacing: 16) {
-                Button("今日清零") {
-                    finishWeeklyEditing()
-                    store.clearToday()
-                }
-                .buttonStyle(SecondaryActionButtonStyle())
-
-                Button("本周清零") {
-                    finishWeeklyEditing()
-                    store.clearWeekly6()
-                }
-                .buttonStyle(SecondaryActionButtonStyle())
-
-                Button("撤销清零") {
-                    cancelWeeklyEditing()
-                    store.undoClear()
-                }
-                .disabled(!store.canUndoClear)
-                .buttonStyle(SecondaryActionButtonStyle())
             }
         }
-        .frame(maxWidth: 1000)
-        .padding(.horizontal, 30)
-        .padding(.top, 22)
-        .padding(.bottom, 24)
-        .frame(maxWidth: .infinity, alignment: .top)
-        .background {
-            canvasColor
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    finishWeeklyEditing()
-                }
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity)
+        .frame(height: metrics.summaryHeight)
+        .background(surfaceColor, in: RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         }
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.035), radius: 10, y: 3)
+    }
+
+    private func actionButtonsView(metrics: LayoutMetrics) -> some View {
+        HStack(spacing: 16) {
+            Button("今日清零") {
+                finishWeeklyEditing()
+                store.clearToday()
+            }
+            .buttonStyle(SecondaryActionButtonStyle(height: metrics.secondaryButtonHeight))
+
+            Button("本周清零") {
+                finishWeeklyEditing()
+                store.clearWeekly6()
+            }
+            .buttonStyle(SecondaryActionButtonStyle(height: metrics.secondaryButtonHeight))
+
+            Button("撤销清零") {
+                cancelWeeklyEditing()
+                store.undoClear()
+            }
+            .disabled(!store.canUndoClear)
+            .buttonStyle(SecondaryActionButtonStyle(height: metrics.secondaryButtonHeight))
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: metrics.secondaryButtonHeight)
     }
 
     private func beginWeeklyEditing() {
@@ -199,6 +221,7 @@ private struct CounterCard<Accessory: View>: View {
     let title: String
     let dailyLabel: String
     let dailyValue: Int
+    let metrics: LayoutMetrics
     let onIncrement: () -> Void
     let onDecrement: () -> Void
     let onClear: () -> Void
@@ -214,6 +237,7 @@ private struct CounterCard<Accessory: View>: View {
         title: String,
         dailyLabel: String,
         dailyValue: Int,
+        metrics: LayoutMetrics,
         onIncrement: @escaping () -> Void,
         onDecrement: @escaping () -> Void,
         onClear: @escaping () -> Void,
@@ -222,6 +246,7 @@ private struct CounterCard<Accessory: View>: View {
         self.title = title
         self.dailyLabel = dailyLabel
         self.dailyValue = dailyValue
+        self.metrics = metrics
         self.onIncrement = onIncrement
         self.onDecrement = onDecrement
         self.onClear = onClear
@@ -229,54 +254,66 @@ private struct CounterCard<Accessory: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title)
-                        .font(.system(size: 23, weight: .semibold))
-
-                    if title == "GPT-6 Pro" {
-                        Text(dailyLabel)
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer(minLength: 12)
-
-                accessory
-            }
-
-            Spacer(minLength: 0)
-
-            Text("\(dailyValue)")
-                .font(.system(size: 78, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .frame(maxWidth: .infinity)
-
-            Spacer(minLength: 0)
-
-            Button("+1", action: onIncrement)
-                .buttonStyle(PrimaryCounterButtonStyle())
-
-            HStack(spacing: 16) {
-                Button("-1", action: onDecrement)
-                    .disabled(dailyValue == 0)
-                    .buttonStyle(SecondaryActionButtonStyle())
-
-                Button("清零", action: onClear)
-                    .buttonStyle(SecondaryActionButtonStyle())
-            }
+        VStack(spacing: metrics.cardSpacing) {
+            cardHeader
+            countView
+            incrementButton
+            decrementRow
         }
-        .padding(23)
-        .frame(maxWidth: .infinity)
-        .frame(height: 330)
+        .padding(metrics.cardPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(surfaceColor, in: RoundedRectangle(cornerRadius: 22))
         .overlay {
             RoundedRectangle(cornerRadius: 22)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         }
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.035), radius: 10, y: 3)
+    }
+
+    private var cardHeader: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 23, weight: .semibold))
+
+                if title == "GPT-6 Pro" {
+                    Text(dailyLabel)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer(minLength: 12)
+
+            accessory
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: metrics.cardHeaderHeight, alignment: .top)
+    }
+
+    private var countView: some View {
+        Text("\(dailyValue)")
+            .font(.system(size: 78, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private var incrementButton: some View {
+        Button("+1", action: onIncrement)
+            .buttonStyle(PrimaryCounterButtonStyle(height: metrics.primaryButtonHeight))
+    }
+
+    private var decrementRow: some View {
+        HStack(spacing: 16) {
+            Button("-1", action: onDecrement)
+                .disabled(dailyValue == 0)
+                .buttonStyle(SecondaryActionButtonStyle(height: metrics.secondaryButtonHeight))
+
+            Button("清零", action: onClear)
+                .buttonStyle(SecondaryActionButtonStyle(height: metrics.secondaryButtonHeight))
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: metrics.secondaryButtonHeight)
     }
 }
 
@@ -382,13 +419,48 @@ private struct WeeklyCounterEditor: View {
     }
 }
 
+private struct LayoutMetrics {
+    let isCompact: Bool
+    let outerSpacing: CGFloat
+    let horizontalPadding: CGFloat
+    let topPadding: CGFloat
+    let bottomPadding: CGFloat
+    let headerHeight: CGFloat
+    let cardPadding: CGFloat
+    let cardSpacing: CGFloat
+    let cardHeaderHeight: CGFloat
+    let primaryButtonHeight: CGFloat
+    let secondaryButtonHeight: CGFloat
+    let summaryHeight: CGFloat
+
+    init(size: CGSize) {
+        isCompact = size.height < 580
+        outerSpacing = isCompact ? 12 : 18
+        horizontalPadding = size.width < 900 ? 24 : 30
+        topPadding = isCompact ? 16 : 22
+        bottomPadding = isCompact ? 16 : 24
+        headerHeight = 34
+        cardPadding = isCompact ? 18 : 23
+        cardSpacing = isCompact ? 6 : 8
+        cardHeaderHeight = 56
+        primaryButtonHeight = isCompact ? 56 : 60
+        secondaryButtonHeight = isCompact ? 44 : 50
+        summaryHeight = isCompact ? 56 : 66
+    }
+}
+
 private struct PrimaryCounterButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    let height: CGFloat
+
+    init(height: CGFloat = 60) {
+        self.height = height
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 22, weight: .semibold))
-            .frame(maxWidth: .infinity, minHeight: 60)
+            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
             .contentShape(RoundedRectangle(cornerRadius: 14))
             .foregroundStyle(.primary)
             .background(
@@ -408,6 +480,11 @@ private struct PrimaryCounterButtonStyle: ButtonStyle {
 private struct SecondaryActionButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
+    let height: CGFloat
+
+    init(height: CGFloat = 50) {
+        self.height = height
+    }
 
     private var surfaceColor: Color {
         colorScheme == .dark
@@ -418,7 +495,7 @@ private struct SecondaryActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 18, weight: .medium))
-            .frame(maxWidth: .infinity, minHeight: 50)
+            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
             .contentShape(RoundedRectangle(cornerRadius: 12))
             .foregroundStyle(.primary)
             .background(surfaceColor, in: RoundedRectangle(cornerRadius: 12))
