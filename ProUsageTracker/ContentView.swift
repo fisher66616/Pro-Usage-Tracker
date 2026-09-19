@@ -291,6 +291,8 @@ private struct WeeklyCounterEditor: View {
     let onCommit: () -> Void
     let onCancel: () -> Void
 
+    @State private var isHovering = false
+
     private var surfaceColor: Color {
         colorScheme == .dark
             ? Color(nsColor: .controlBackgroundColor)
@@ -305,95 +307,77 @@ private struct WeeklyCounterEditor: View {
                 normalButton
             }
         }
-        .frame(width: 136, height: 72)
+        .frame(width: 88, height: 44)
     }
 
     private var normalButton: some View {
         Button(action: onBegin) {
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("本周")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(.secondary)
-
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(weeklyValue)")
-                        .font(.system(size: 21, weight: .semibold))
-                        .monospacedDigit()
-
-                    Text("次")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.secondary)
+            Text("\(weeklyValue)")
+                .font(.system(size: 22, weight: .semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(width: 88, height: 44)
+                .contentShape(RoundedRectangle(cornerRadius: 12))
+                .background {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(surfaceColor)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.accentColor.opacity(isHovering ? 0.04 : 0))
+                        }
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .contentShape(RoundedRectangle(cornerRadius: 14))
-            .background(surfaceColor, in: RoundedRectangle(cornerRadius: 14))
             .overlay {
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.primary.opacity(isHovering ? 0.14 : 0.08), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .accessibilityLabel("GPT-6 Pro 本周次数")
+        .accessibilityValue(Text("\(weeklyValue)"))
     }
 
     private var editingContent: some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            Text("本周")
-                .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 4) {
-                TextField("", text: $weeklyDraft)
-                    .font(.system(size: 18, weight: .semibold))
-                    .monospacedDigit()
-                    .multilineTextAlignment(.trailing)
-                    .textFieldStyle(.plain)
-                    .frame(width: 50, height: 26)
-                    .background(surfaceColor.opacity(colorScheme == .dark ? 0.55 : 0.72), in: RoundedRectangle(cornerRadius: 6))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-                    }
-                    .focused(isFocused)
-                    .onSubmit {
-                        onCommit()
-                    }
-                    .onExitCommand {
-                        onCancel()
-                    }
-                    .accessibilityLabel("本周次数")
-
-                Button(action: onCommit) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(width: 26, height: 26)
-                        .contentShape(Rectangle())
+        HStack(spacing: 4) {
+            TextField("", text: $weeklyDraft)
+                .font(.system(size: 18, weight: .semibold))
+                .monospacedDigit()
+                .multilineTextAlignment(.center)
+                .textFieldStyle(.plain)
+                .frame(width: 48, height: 28)
+                .background(surfaceColor.opacity(colorScheme == .dark ? 0.55 : 0.72), in: RoundedRectangle(cornerRadius: 6))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.primary)
-                .accessibilityLabel("保存本周次数")
-
-                Button(action: onCancel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(width: 26, height: 26)
-                        .contentShape(Rectangle())
+                .focused(isFocused)
+                .onSubmit {
+                    onCommit()
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("取消编辑本周次数")
+                .onExitCommand {
+                    onCancel()
+                }
+                .accessibilityLabel("GPT-6 Pro 本周次数")
+
+            Button(action: onCommit) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .accessibilityLabel("保存本周次数")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(width: 136, height: 72, alignment: .trailing)
-        .background(surfaceColor, in: RoundedRectangle(cornerRadius: 14))
+        .frame(width: 88, height: 44)
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .background(surfaceColor, in: RoundedRectangle(cornerRadius: 12))
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         }
     }
 }
