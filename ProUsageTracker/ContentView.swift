@@ -48,6 +48,7 @@ struct ContentView: View {
                 .padding(.horizontal, metrics.horizontalPadding)
                 .padding(.top, metrics.topPadding)
                 .padding(.bottom, metrics.bottomPadding)
+                .frame(maxWidth: 1440, alignment: .top)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
@@ -121,8 +122,8 @@ struct ContentView: View {
                 )
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .layoutPriority(1)
+        .frame(maxWidth: .infinity)
+        .frame(height: metrics.cardRowHeight)
     }
 
     private func summaryView(metrics: LayoutMetrics) -> some View {
@@ -432,20 +433,43 @@ private struct LayoutMetrics {
     let primaryButtonHeight: CGFloat
     let secondaryButtonHeight: CGFloat
     let summaryHeight: CGFloat
+    let cardRowHeight: CGFloat
 
     init(size: CGSize) {
         isCompact = size.height < 580
-        outerSpacing = isCompact ? 12 : 18
+        let transitionProgress = min(max((size.height - 570) / 10, 0), 1)
+        outerSpacing = Self.interpolate(12, 18, progress: transitionProgress)
         horizontalPadding = size.width < 900 ? 24 : 30
-        topPadding = isCompact ? 16 : 22
-        bottomPadding = isCompact ? 16 : 24
+        topPadding = Self.interpolate(16, 22, progress: transitionProgress)
+        bottomPadding = Self.interpolate(16, 24, progress: transitionProgress)
         headerHeight = 34
-        cardPadding = isCompact ? 18 : 23
-        cardSpacing = isCompact ? 6 : 8
+        cardPadding = Self.interpolate(18, 23, progress: transitionProgress)
+        cardSpacing = Self.interpolate(6, 8, progress: transitionProgress)
         cardHeaderHeight = 56
-        primaryButtonHeight = isCompact ? 56 : 60
-        secondaryButtonHeight = isCompact ? 44 : 50
-        summaryHeight = isCompact ? 56 : 66
+        primaryButtonHeight = Self.interpolate(56, 60, progress: transitionProgress)
+        secondaryButtonHeight = Self.interpolate(44, 50, progress: transitionProgress)
+        summaryHeight = Self.interpolate(56, 66, progress: transitionProgress)
+
+        let minimumCardHeight: CGFloat = isCompact ? 320 : 330
+        let maximumCardHeight: CGFloat = isCompact ? 330 : 480
+        let availableCardHeight = max(
+            0,
+            size.height
+                - topPadding
+                - bottomPadding
+                - headerHeight
+                - summaryHeight
+                - secondaryButtonHeight
+                - outerSpacing * 3
+        )
+        cardRowHeight = min(
+            max(availableCardHeight, minimumCardHeight),
+            maximumCardHeight
+        )
+    }
+
+    private static func interpolate(_ compact: CGFloat, _ regular: CGFloat, progress: CGFloat) -> CGFloat {
+        compact + (regular - compact) * progress
     }
 }
 
