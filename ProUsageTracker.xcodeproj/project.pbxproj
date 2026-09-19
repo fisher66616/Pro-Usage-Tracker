@@ -10,6 +10,7 @@
 		A10000000000000000000001 /* ProUsageTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* ProUsageTrackerApp.swift */; };
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
 		A10000000000000000000003 /* CounterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* CounterStore.swift */; };
+		A10000000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +18,7 @@
 		A20000000000000000000001 /* ProUsageTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProUsageTrackerApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* CounterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterStore.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +46,7 @@
 				A20000000000000000000001 /* ProUsageTrackerApp.swift */,
 				A20000000000000000000002 /* ContentView.swift */,
 				A20000000000000000000003 /* CounterStore.swift */,
+				A20000000000000000000004 /* Assets.xcassets */,
 			);
 			path = ProUsageTracker;
 			sourceTree = "<group>";
@@ -109,6 +112,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000004 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -212,13 +216,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Pro Usage Tracker";
+				INFOPLIST_KEY_CFBundleDisplayName = "额度魔女";
+				INFOPLIST_KEY_CFBundleName = "额度魔女";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				EXECUTABLE_NAME = ProUsageTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -226,7 +231,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fisher66616.ProUsageTracker;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = ProUsageTracker;
+				PRODUCT_NAME = "额度魔女";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Debug;
@@ -235,13 +241,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Pro Usage Tracker";
+				INFOPLIST_KEY_CFBundleDisplayName = "额度魔女";
+				INFOPLIST_KEY_CFBundleName = "额度魔女";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				EXECUTABLE_NAME = ProUsageTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -249,7 +256,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fisher66616.ProUsageTracker;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = ProUsageTracker;
+				PRODUCT_NAME = "额度魔女";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
